@@ -35,7 +35,11 @@ async function run() {
 
         //PARTS
         app.get('/parts', async (req, res) => {
-            const result = await partsCollection.find().toArray()
+            const pageText = req.query.page
+            const sizeText = req.query.size
+            const page = parseInt(pageText)
+            const size = parseInt(sizeText)
+            const result = await partsCollection.find().skip(page).limit(size).toArray()
             res.send({ success: true, data: result })
         })
     } finally {
