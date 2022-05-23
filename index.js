@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const app = express()
@@ -32,12 +32,12 @@ async function run() {
         await client.connect()
         const partsCollection = client.db('partsBd').collection('parts')
         const usersCollection = client.db('partsBd').collection('user')
+        const ordersCollection = client.db('partsBd').collection('order')
 
         //USER
         app.put('/user/:email', async (req, res) => {
             const email = req.params.email
             const user = req.body
-            console.log(user)
             const filter = { email }
             const options = { upsert: true }
             const updatedDoc = { $set: user }
@@ -56,6 +56,22 @@ async function run() {
             const size = parseInt(sizeText)
             const result = await partsCollection.find().skip(page).limit(size).toArray()
             res.send({ success: true, data: result })
+        })
+
+        app.get('/parts/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const item = await partsCollection.findOne(query)
+            res.send(item)
+        })
+
+        //ORDERs
+        app.post('/order', verifyJWT, async (req, res) => {
+            const order = req.body
+            const result = await ordersCollection.insertOne(order)
+            if (result.insertedId) {
+                res.send({ success: true, message: 'Order Confirmed! Pay Now' })
+            }
         })
     } finally {
     }
