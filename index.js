@@ -37,6 +37,15 @@ async function run() {
         const paymentsCollection = client.db('partsBd').collection('payment')
         const reviewsCollection = client.db('partsBd').collection('review')
 
+        async function verifyAdmin(req, res, next) {
+            const email = req.decoded.email
+            const user = await usersCollection.findOne({ email })
+            const isAdmin = user.role === 'admin'
+            if (isAdmin) {
+                next()
+            }
+        }
+
         //PAYMENT
         app.post('/create-payment-intent', async (req, res) => {
             const order = req.body
@@ -50,21 +59,34 @@ async function run() {
             res.send({ clientSecret: paymentIntent.client_secret })
         })
 
+        //ADMIN
+        app.get('/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email
+            const user = await usersCollection.findOne({ email })
+            const isAdmin = user.role === 'admin'
+            console.log(isAdmin);
+            res.send({ admin: isAdmin })
+        })
+
         //USER
+        app.get('/user', verifyJWT, async (req, res) => {
+            const user = await usersCollection.find().toArray()
+            res.send(user)
+        })
+
         app.get('/user/:email', verifyJWT, async (req, res) => {
             const email = req.params.email
             const user = await usersCollection.findOne({ email })
             res.send({ user })
         })
 
-        app.patch('/user/:email', verifyJWT, async (req, res) => {
+        app.patch('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.params.email
-            const user = req.body
             const filter = { email }
-            const updatedDoc = { $set: { name: user.name } }
+            const updatedDoc = { $set: { role: 'admin' } }
             const updatedUser = await usersCollection.updateOne(filter, updatedDoc)
-            if (updatedUser.modifiedCount || updatedUser.modifiedCount) {
-                res.send({ success: true, message: 'Profile updated!' })
+            if (updatedUser.modifiedCount) {
+                res.send({ success: true, message: 'Make admin success' })
             }
         })
 
@@ -81,8 +103,20 @@ async function run() {
             }
         })
 
+        app.put('/user/update/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email
+            const user = req.body
+            const filter = { email }
+            const options = { upsert: true }
+            const updatedDoc = { $set: user }
+            const updatedUser = await usersCollection.updateOne(filter, updatedDoc, options)
+            if (updatedUser.modifiedCount || updatedUser.matchedCount) {
+                res.send({ success: true, message: 'Profile updated!' })
+            }
+        })
+
         //PARTS
-        app.get('/parts', verifyJWT, async (req, res) => {
+        app.get('/parts', async (req, res) => {
             const pageText = req.query.page
             const sizeText = req.query.size
             const page = parseInt(pageText)
