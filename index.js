@@ -35,6 +35,7 @@ async function run() {
         const usersCollection = client.db('partsBd').collection('user')
         const ordersCollection = client.db('partsBd').collection('order')
         const paymentsCollection = client.db('partsBd').collection('payment')
+        const reviewsCollection = client.db('partsBd').collection('review')
 
         //PAYMENT
         app.post('/create-payment-intent', async (req, res) => {
@@ -137,6 +138,15 @@ async function run() {
             const result = await ordersCollection.deleteOne(query)
             if (result.deletedCount) {
                 res.send({ success: true, message: 'Order canceled' })
+            }
+        })
+
+        //REVIEW
+        app.post('/review', verifyJWT, async (req, res) => {
+            const review = req.body
+            const result = await reviewsCollection.insertOne(review)
+            if (result.insertedId) {
+                res.send({ success: true, message: 'Thanks for your review!' })
             }
         })
     } finally {
