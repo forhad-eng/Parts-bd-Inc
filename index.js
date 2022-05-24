@@ -64,7 +64,7 @@ async function run() {
             const email = req.params.email
             const user = await usersCollection.findOne({ email })
             const isAdmin = user.role === 'admin'
-            console.log(isAdmin);
+            console.log(isAdmin)
             res.send({ admin: isAdmin })
         })
 
@@ -112,6 +112,14 @@ async function run() {
             const updatedUser = await usersCollection.updateOne(filter, updatedDoc, options)
             if (updatedUser.modifiedCount || updatedUser.matchedCount) {
                 res.send({ success: true, message: 'Profile updated!' })
+            }
+        })
+
+        app.delete('/user/:email', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req.params.email
+            const result = await usersCollection.deleteOne({ email })
+            if (result.deletedCount) {
+                res.send({ success: true, message: 'User removed' })
             }
         })
 
