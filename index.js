@@ -140,6 +140,14 @@ async function run() {
             res.send(item)
         })
 
+        app.post('/parts', verifyJWT, verifyAdmin, async (req, res) => {
+            const parts = req.body
+            const result = await partsCollection.insertOne(parts)
+            if (result.insertedId) {
+                res.send({ success: true, message: 'Product added successfully' })
+            }
+        })
+
         app.delete('/parts/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id
             const query = { _id: ObjectId(id) }
