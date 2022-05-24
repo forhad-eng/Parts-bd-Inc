@@ -41,6 +41,17 @@ async function run() {
             res.send({ user })
         })
 
+        app.patch('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email
+            const user = req.body
+            const filter = { email }
+            const updatedDoc = { $set: { name: user.name } }
+            const updatedUser = await usersCollection.updateOne(filter, updatedDoc)
+            if (updatedUser.modifiedCount || updatedUser.modifiedCount) {
+                res.send({ success: true, message: 'Profile updated!' })
+            }
+        })
+
         app.put('/user/:email', async (req, res) => {
             const email = req.params.email
             const user = req.body
@@ -72,11 +83,26 @@ async function run() {
         })
 
         //ORDERs
+        app.get('/order/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email
+            const orders = await ordersCollection.find({ email }).toArray()
+            res.send(orders)
+        })
+
         app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body
             const result = await ordersCollection.insertOne(order)
             if (result.insertedId) {
                 res.send({ success: true, message: 'Order Confirmed! Pay Now' })
+            }
+        })
+
+        app.delete('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const result = await ordersCollection.deleteOne(query)
+            if (result.deletedCount) {
+                res.send({ success: true, message: 'Order canceled' })
             }
         })
     } finally {
