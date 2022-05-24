@@ -35,6 +35,12 @@ async function run() {
         const ordersCollection = client.db('partsBd').collection('order')
 
         //USER
+        app.get('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email
+            const user = await usersCollection.findOne({ email })
+            res.send({ user })
+        })
+
         app.put('/user/:email', async (req, res) => {
             const email = req.params.email
             const user = req.body
