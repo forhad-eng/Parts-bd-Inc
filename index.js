@@ -141,6 +141,11 @@ async function run() {
         })
 
         //ORDERs
+        app.get('/order', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await ordersCollection.find().toArray()
+            res.send(result)
+        })
+
         app.get('/order/user/:email', verifyJWT, async (req, res) => {
             const email = req.params.email
             const orders = await ordersCollection.find({ email }).toArray()
@@ -162,15 +167,25 @@ async function run() {
             }
         })
 
-        app.patch('/order/:id', verifyJWT, async (req, res) => {
+        app.put('/order/:id', verifyJWT, async (req, res) => {
             const id = req.params.id
             const payment = req.body
             const filter = { _id: ObjectId(id) }
-            const updatedDoc = { $set: { paid: true, transactionId: payment.transactionId } }
+            const updatedDoc = { $set: { paid: true, transactionId: payment.transactionId, status: 'pending' } }
             await paymentsCollection.insertOne(payment)
             const result = await ordersCollection.updateOne(filter, updatedDoc)
             if (result.modifiedCount) {
                 res.send({ success: true })
+            }
+        })
+
+        app.patch('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id
+            const filter = { _id: ObjectId(id) }
+            const updatedDoc = { $set: { status: 'shipped' } }
+            const result = await ordersCollection.updateOne(filter, updatedDoc)
+            if (result.modifiedCount) {
+                res.send({ success: true, message: 'Status updated to shipped' })
             }
         })
 
