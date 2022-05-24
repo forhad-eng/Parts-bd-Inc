@@ -140,6 +140,15 @@ async function run() {
             res.send(item)
         })
 
+        app.delete('/parts/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const item = await partsCollection.deleteOne(query)
+            if (item.deletedCount) {
+                res.send({ success: true, message: 'Product deleted' })
+            }
+        })
+
         //ORDERs
         app.get('/order', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await ordersCollection.find().toArray()
