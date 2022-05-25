@@ -2,6 +2,8 @@ const express = require('express')
 const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
+const nodemailer = require('nodemailer')
+const sgTransport = require('nodemailer-sendgrid-transport')
 require('dotenv').config()
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const app = express()
@@ -22,6 +24,32 @@ function verifyJWT(req, res, next) {
         }
         req.decoded = decoded
         next()
+    })
+}
+
+const emailOptions = {
+    auth: {
+        api_key: process.env.EMAIL_SENDER_KEY
+    }
+}
+
+const emailClient = nodemailer.createTransport(sgTransport(emailOptions))
+
+function sendEmail(email) {
+    var email = {
+        from: process.env.EMAIL_SENDER,
+        to: email,
+        subject: 'Hello',
+        text: 'Hello world',
+        html: '<b>Hello world</b>'
+    }
+
+    emailClient.sendMail(email, function (err, info) {
+        if (err) {
+            console.log(err)
+        } else {
+            console.log('Message sent: ', info)
+        }
     })
 }
 
@@ -64,7 +92,6 @@ async function run() {
             const email = req.params.email
             const user = await usersCollection.findOne({ email })
             const isAdmin = user.role === 'admin'
-            console.log(isAdmin)
             res.send({ admin: isAdmin })
         })
 
@@ -180,6 +207,7 @@ async function run() {
             const order = req.body
             const result = await ordersCollection.insertOne(order)
             if (result.insertedId) {
+                sendEmail(req.decoded.email)
                 res.send({ success: true, message: 'Order Confirmed! Pay Now' })
             }
         })
@@ -235,7 +263,7 @@ async function run() {
 run().catch(console.dir)
 
 app.get('/', (req, res) => {
-    res.send('Parts Inc Server Is Running!')
+    res.send('Parts-bd Inc Server Is Running!')
 })
 
 app.listen(port, () => {
