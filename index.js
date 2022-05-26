@@ -57,7 +57,7 @@ const sendEmail = order => {
                 <a href="https://web.programming-hero.com">unsubscribe</a>
             </div>
         `)
-    } else if (paid) {
+    } else if (status === 'pending') {
         ;(subject = `Your order for ${partsName} is pending for shipping`),
             (html = `
             <div>
