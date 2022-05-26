@@ -37,13 +37,14 @@ const auth = {
 const nodemailerMailgun = nodemailer.createTransport(mg(auth))
 
 const sendEmail = order => {
-    const { partsName, quantity, amount, name, email } = order
+    const { partsName, quantity, amount, name, email, paid, status } = order
 
-    const emailClient = {
-        from: process.env.EMAIL_SENDER,
-        to: email,
-        subject: `Your order for ${partsName} is received`,
-        html: `
+    let subject
+    let html
+
+    if (!paid) {
+        ;(subject = `Your order for ${partsName} is received`),
+            (html = `
             <div>
                 <h2>Hello ${name}</h2>
                 <p>Your order for ${partsName}, quantity ${quantity} has been placed!</p>
@@ -55,7 +56,42 @@ const sendEmail = order => {
                 <p>Bangladesh</p>
                 <a href="https://web.programming-hero.com">unsubscribe</a>
             </div>
-        `
+        `)
+    } else if (paid) {
+        ;(subject = `Your order for ${partsName} is pending for shipping`),
+            (html = `
+            <div>
+                <h2>Hello ${name}</h2>
+                <p>Your order for ${partsName}, quantity ${quantity} is pending for shipping!</p>
+                <p>Thank You.</p>
+
+                <h3>Our Address</h3>
+                <p>Agrabad, Chittagong</p>
+                <p>Bangladesh</p>
+                <a href="https://web.programming-hero.com">unsubscribe</a>
+            </div>
+        `)
+    } else if (status === 'shipped') {
+        ;(subject = `Your order for ${partsName} is shipped`),
+            (html = `
+            <div>
+                <h2>Hello ${name}</h2>
+                <p>Your order for ${partsName}, quantity ${quantity} is shipped!</p>
+                <p>Thank You for being with us.</p>
+
+                <h3>Our Address</h3>
+                <p>Agrabad, Chittagong</p>
+                <p>Bangladesh</p>
+                <a href="https://web.programming-hero.com">unsubscribe</a>
+            </div>
+        `)
+    }
+
+    const emailClient = {
+        from: process.env.EMAIL_SENDER,
+        to: email,
+        subject: subject,
+        html: html
     }
 
     nodemailerMailgun.sendMail(emailClient, (err, info) => {
@@ -234,6 +270,8 @@ async function run() {
             await paymentsCollection.insertOne(payment)
             const result = await ordersCollection.updateOne(filter, updatedDoc)
             if (result.modifiedCount) {
+                const order = await ordersCollection.findOne(filter)
+                sendEmail(order)
                 res.send({ success: true })
             }
         })
@@ -244,6 +282,8 @@ async function run() {
             const updatedDoc = { $set: { status: 'shipped' } }
             const result = await ordersCollection.updateOne(filter, updatedDoc)
             if (result.modifiedCount) {
+                const order = await ordersCollection.findOne(filter)
+                sendEmail(order)
                 res.send({ success: true, message: 'Status updated to shipped' })
             }
         })
