@@ -3,7 +3,7 @@ const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer')
-const sgTransport = require('nodemailer-sendgrid-transport')
+const mg = require('nodemailer-mailgun-transport')
 require('dotenv').config()
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const app = express()
@@ -27,28 +27,78 @@ function verifyJWT(req, res, next) {
     })
 }
 
-const emailOptions = {
+const auth = {
     auth: {
-        api_key: process.env.EMAIL_SENDER_KEY
+        api_key: process.env.EMAIL_SENDER_KEY,
+        domain: 'sandbox2d1e6859ee254f04bfe00690163241db.mailgun.org'
     }
 }
 
-const emailClient = nodemailer.createTransport(sgTransport(emailOptions))
+const nodemailerMailgun = nodemailer.createTransport(mg(auth))
 
-function sendEmail(email) {
-    var email = {
-        from: process.env.EMAIL_SENDER,
-        to: email,
-        subject: 'Hello',
-        text: 'Hello world',
-        html: '<b>Hello world</b>'
+const sendEmail = order => {
+    const { partsName, quantity, amount, name, email, paid, status } = order
+
+    let subject
+    let html
+
+    if (!paid) {
+        ;(subject = `Your order for ${partsName} is received`),
+            (html = `
+            <div>
+                <h2>Hello ${name}</h2>
+                <p>Your order for ${partsName}, quantity ${quantity} has been placed!</p>
+                <p>Please pay ${amount} to confirm the order.</p>
+                <p>Thank You.</p>
+
+                <h3>Our Address</h3>
+                <p>Agrabad, Chittagong</p>
+                <p>Bangladesh</p>
+                <a href="https://web.programming-hero.com">unsubscribe</a>
+            </div>
+        `)
+    } else if (paid) {
+        ;(subject = `Your order for ${partsName} is pending for shipping`),
+            (html = `
+            <div>
+                <h2>Hello ${name}</h2>
+                <p>Your order for ${partsName}, quantity ${quantity} is pending for shipping!</p>
+                <p>Thank You.</p>
+
+                <h3>Our Address</h3>
+                <p>Agrabad, Chittagong</p>
+                <p>Bangladesh</p>
+                <a href="https://web.programming-hero.com">unsubscribe</a>
+            </div>
+        `)
+    } else if (status === 'shipped') {
+        ;(subject = `Your order for ${partsName} is shipped`),
+            (html = `
+            <div>
+                <h2>Hello ${name}</h2>
+                <p>Your order for ${partsName}, quantity ${quantity} is shipped!</p>
+                <p>Thank You for being with us.</p>
+
+                <h3>Our Address</h3>
+                <p>Agrabad, Chittagong</p>
+                <p>Bangladesh</p>
+                <a href="https://web.programming-hero.com">unsubscribe</a>
+            </div>
+        `)
     }
 
-    emailClient.sendMail(email, function (err, info) {
+    const emailClient = {
+        from: process.env.EMAIL_SENDER,
+        to: email,
+        subject: subject,
+        html: html
+    }
+
+    nodemailerMailgun.sendMail(emailClient, (err, info) => {
         if (err) {
-            console.log(err)
+            console.log(`Error: ${err}`)
         } else {
-            console.log('Message sent: ', info)
+            console.log(`Response: ${info}`)
         }
     })
 }
@@ -207,7 +257,7 @@ async function run() {
             const order = req.body
             const result = await ordersCollection.insertOne(order)
             if (result.insertedId) {
-                sendEmail(req.decoded.email)
+                sendEmail(order)
                 res.send({ success: true, message: 'Order Confirmed! Pay Now' })
             }
         })
@@ -220,6 +270,7 @@ async function run() {
             await paymentsCollection.insertOne(payment)
             const result = await ordersCollection.updateOne(filter, updatedDoc)
             if (result.modifiedCount) {
+                sendEmail(order)
                 res.send({ success: true })
             }
         })
@@ -230,6 +281,7 @@ async function run() {
             const updatedDoc = { $set: { status: 'shipped' } }
             const result = await ordersCollection.updateOne(filter, updatedDoc)
             if (result.modifiedCount) {
+                sendEmail(order)
                 res.send({ success: true, message: 'Status updated to shipped' })
             }
         })
