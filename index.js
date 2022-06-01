@@ -173,7 +173,7 @@ async function run() {
             const filter = { email }
             const options = { upsert: true }
             const updatedDoc = { $set: user }
-            const accessToken = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET)
+            const accessToken = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1d'})
             const result = await usersCollection.updateOne(filter, updatedDoc, options)
             if (result) {
                 res.send({ accessToken })
