@@ -173,7 +173,7 @@ async function run() {
             const filter = { email }
             const options = { upsert: true }
             const updatedDoc = { $set: user }
-            const accessToken = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1d'})
+            const accessToken = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
             const result = await usersCollection.updateOne(filter, updatedDoc, options)
             if (result) {
                 res.send({ accessToken })
@@ -255,6 +255,11 @@ async function run() {
 
         app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body
+            const filter = { _id: ObjectId(order.partsId) }
+            const parts = await partsCollection.findOne(filter)
+            const currentAvailable = parts.available - order.quantity
+            const updatedDoc = { $set: { available: currentAvailable } }
+            await partsCollection.updateOne(filter, updatedDoc)
             const result = await ordersCollection.insertOne(order)
             if (result.insertedId) {
                 sendEmail(order)
